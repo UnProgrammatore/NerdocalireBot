@@ -60,8 +60,6 @@ def saldo(update, context):
     else:
         curr = res[0]
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'Il tuo saldo è di {curr} nerdocalire')
-    #if(not trovato):
-    #    context.bot.send_message(chat_id=update.effective_chat.id, text=f'Sembra tu non abbia mai fatto transazioni')
 
 def ottieni(update, context):
     user = update.message.from_user
