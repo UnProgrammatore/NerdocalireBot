@@ -200,9 +200,93 @@ def skarma(update, context):
         conn.close()
 def ping(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text=f'/pong')
-    
 
-    
+# Returns the number of Isacco points of the user that sent the message if no argument is specified, otherwise returns the number of Isacco points of the specified user
+def puntiisacco(update, context):
+    conn = connect_database(update, context)
+    try:
+        user = update.message.from_user
+        if len(context.args) == 0:
+            cur = conn.cursor()
+            cur.execute("SELECT puntiisacco FROM nerdocalissiani WHERE telegramUserId = ?", (user.id,))
+            res = cur.fetchone()
+            context.bot.send_message(chat_id=update.effective_chat.id, text=f'Hai {res[0]} punti Isacco')
+        else:
+            target = context.args[0]
+            if target.startswith("@"):
+                cur = conn.cursor()
+                cur.execute("SELECT puntiisacco FROM nerdocalissiani WHERE telegramUsername = ?", (target[1:],))
+                res = cur.fetchone()
+            else:
+                cur = conn.cursor()
+                cur.execute("SELECT puntiisacco FROM nerdocalissiani WHERE name = ?", (target,))
+                res = cur.fetchone()
+            if res[0] == None:
+                context.bot.send_message(chat_id=update.effective_chat.id, text=f'Non ho trovato {target}')
+            else:
+                context.bot.send_message(chat_id=update.effective_chat.id, text=f'{target} ha {res[0]} punti Isacco')
+    finally:
+        conn.close()
+
+# Returns whether the canGivePuntiisacco permission is enabled for the given user
+def canGivePuntiisacco(userId):
+    conn = connect_database(None, None)
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT canGivePuntiisacco FROM nerdocalissiani WHERE telegramUserId = ?", (userId,))
+        res = cur.fetchone()
+        return res[0]
+    finally:
+        conn.close()
+
+# Adds the specified number of Isacco points to the specified user
+def dai_puntiisacco(update, context):
+    conn = connect_database(update, context)
+    try:
+        user = update.message.from_user
+        if not canGivePuntiisacco(user.id):
+            context.bot.send_message(chat_id=update.effective_chat.id, text=f'Non hai il permesso di dare punti Isacco')
+            return
+        if len(context.args) < 2:
+            context.bot.send_message(chat_id=update.effective_chat.id, text=f'Specifica il target e il numero di punti Isacco da dare')
+        else:
+            target = context.args[0]
+            if target.startswith("@"):
+                cur = conn.cursor()
+                cur.execute("UPDATE nerdocalissiani SET puntiisacco = puntiisacco + ? WHERE telegramUsername = ?", (int(context.args[1]), target[1:]))
+            else:
+                cur = conn.cursor()
+                cur.execute("UPDATE nerdocalissiani SET puntiisacco = puntiisacco + ? WHERE name = ?", (int(context.args[1]), target))
+            if cur.rowcount > 0:
+                context.bot.send_message(chat_id=update.effective_chat.id, text=f'Hai dato {context.args[1]} punti Isacco a {target}')
+            else:
+                context.bot.send_message(chat_id=update.effective_chat.id, text=f'Non ho trovato {target}')
+    finally:
+        conn.close()
+# Subtracts the specified number of Isacco points to the specified user
+def togli_puntiisacco(update, context):
+    conn = connect_database(update, context)
+    try:
+        user = update.message.from_user
+        if not canGivePuntiisacco(user.id):
+            context.bot.send_message(chat_id=update.effective_chat.id, text=f'Non hai il permesso di togliere punti Isacco')
+            return
+        if len(context.args) < 2:
+            context.bot.send_message(chat_id=update.effective_chat.id, text=f'Specifica il target e il numero di punti Isacco da togliere')
+        else:
+            target = context.args[0]
+            if target.startswith("@"):
+                cur = conn.cursor()
+                cur.execute("UPDATE nerdocalissiani SET puntiisacco = puntiisacco - ? WHERE telegramUsername = ?", (int(context.args[1]), target[1:]))
+            else:
+                cur = conn.cursor()
+                cur.execute("UPDATE nerdocalissiani SET puntiisacco = puntiisacco - ? WHERE name = ?", (int(context.args[1]), target))
+            if cur.rowcount > 0:
+                context.bot.send_message(chat_id=update.effective_chat.id, text=f'Hai tolto {context.args[1]} punti Isacco a {target}')
+            else:
+                context.bot.send_message(chat_id=update.effective_chat.id, text=f'Non ho trovato {target}')
+    finally:
+        conn.close()
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level = logging.INFO)
 updater = Updater(token = token, use_context = True)
@@ -218,5 +302,8 @@ dispatcher.add_handler(CommandHandler('chisono', chisono))
 dispatcher.add_handler(CommandHandler('skarma', skarma))
 dispatcher.add_handler(CommandHandler('ping', ping))
 dispatcher.add_handler(CommandHandler('chester_info', chester_info))
+dispatcher.add_handler(CommandHandler('puntiisacco', puntiisacco))
+dispatcher.add_handler(CommandHandler('daipuntiisacco', dai_puntiisacco))
+dispatcher.add_handler(CommandHandler('toglipuntiisacco', togli_puntiisacco))
 
 updater.start_polling()
