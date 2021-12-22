@@ -235,7 +235,7 @@ def canGivePuntiisacco(userId):
         cur = conn.cursor()
         cur.execute("SELECT canGivePuntiisacco FROM nerdocalissiani WHERE telegramUserId = ?", (userId,))
         res = cur.fetchone()
-        return res[0]
+        return res[0] == 1
     finally:
         conn.close()
 
